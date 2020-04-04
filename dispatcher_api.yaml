@@ -1,0 +1,175 @@
+openapi: 3.0.0
+info:
+  title: Dispatcher API
+  description: HTTP API for Dispatcher service
+  version: 0.0.1
+paths:
+  /topology:
+    get:
+      summary: Get topology info
+      description: >-
+        Returns information about devices' topology (how devices connected)
+      operationId: showTopology
+      tags:
+        - topology
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topology"
+        default:
+          $ref: "#/components/responses/Error"
+  /state:
+    get:
+      summary: Get topology state for the given period
+      description: Returns system state for the period given in chronological order.
+      operationId: getState
+      tags:
+        - state
+      parameters:
+        - $ref: "#/components/parameters/FromDateTime"
+        - $ref: "#/components/parameters/TillDateTime"
+        - $ref: "#/components/parameters/SourceType"
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DevicesState"
+        default:
+          $ref: "#/components/responses/Error"
+  /device:
+    get:
+      summary: Get device info
+      description: Returns information for device id given
+      operationId: getDeviceInfo
+      tags:
+        - device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/SourceType"
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceConnections"
+components:
+  parameters:
+    FromDateTime:
+      in: query
+      name: from_datetime
+      schema:
+        type: integer
+      required: true
+      description: >-
+        Limit output with lower bound. Output would start from the element with timestamp
+        greater or equal than specified date-time. Required parameter. Expected UNIX timestamp.
+    TillDateTime:
+      in: query
+      name: till_datetime
+      schema:
+        type: integer
+      required: true
+      description: >-
+        Limit output with upper bound. Output would stop before the element with specified date-time.
+        Required parameter. Expected UNIX timestamp.
+    SourceType:
+      in: query
+      name: source
+      schema:
+        type: string
+        enum: [virtual, real]
+      required: true
+      description: >
+         * `virtual` - for emulator info
+         * `real` - for real devices' info
+    DeviceId:
+      in: query
+      name: device_id
+      schema:
+        type: integer
+      required: true
+  responses:
+    Error:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    Topology:
+      type: array
+      items:
+        $ref: "#/components/schemas/DeviceConnections"
+    DeviceConnections:
+      required:
+        - id
+        - connections
+      properties:
+        id:
+          type: integer
+        resources:
+          $ref: "#/components/schemas/Connections"
+    Connections:
+      type: array
+      items:
+        type: integer
+    DevicesState:
+      type: array
+      items:
+        $ref: "#/components/schemas/DeviceState"
+    DeviceState:
+      type: object
+      required:
+        - device_id
+        - status
+      properties:
+        device_id:
+          type: integer
+        status:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceInfo"
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/DeviceAction"
+    DeviceInfo:
+      type: object
+      required:
+        - time
+        - battery_life
+      properties:
+        time:
+          type: string
+          format: date-time
+        battery_life:
+          type: integer
+        current_packet:
+          type: string
+    DeviceAction:
+      type: object
+      required:
+        - time
+        - action
+      properties:
+        time:
+          type: string
+          format: date-time
+        action:
+          type: string
+          enum: [send, sleep, receive]
+    ErrorResponse:
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string

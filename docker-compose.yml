@@ -1,0 +1,11 @@
+version: '3'
+services:
+  dispatcher:
+    build:
+      context: .
+    image: mininet 
+    tty: true
+    privileged: true
+    network_mode: "host"
+    volumes:
+     - /lib/modules:/lib/modules

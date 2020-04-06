@@ -113,7 +113,7 @@ components:
       properties:
         id:
           type: integer
-        resources:
+        connections:
           $ref: "#/components/schemas/Connections"
     Connections:
       type: array

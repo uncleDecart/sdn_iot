@@ -1,3 +1,35 @@
+# Copyright (C) 2014 Nippon Telegraph and Telephone Corporation.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Usage example
+
+1. Join switches (use your favorite method):
+$ sudo mn --controller remote --topo tree,depth=3
+
+2. Run this application:
+$ PYTHONPATH=. ./bin/ryu run \
+    --observe-links ryu/app/gui_topology/gui_topology.py
+
+3. Access http://<ip address of ryu host>:8080 with your web browser.
+"""
+
+import os
+
+from webob.static import DirectoryApp
+
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -6,40 +38,22 @@ from ryu.ofproto import ofproto_v1_5
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
+from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.util import dumpNodeConnections
-from mininet.log import setLogLevel
-from mininet.node import OVSController
+PATH = os.path.dirname(__file__)
 
-#class SingleSwitchTopo(Topo):
-#  "Single switch connected to n hosts."
-#  def build(self, n=2):
-#    switch = self.addSwitch('s1')
-#    for h in range(n):
-#      host = self.addHost('h%s' % (h + 1))
-#      self.addLink(host, switch)
-#
-#setLogLevel('info')
-#print "Create and test a simple network"
-#topo = SingleSwitchTopo(n=4)
-#net = Mininet(topo, controller=OVSController)
-#net.start()
-#print "Dumping host connections"
-#dumpNodeConnections(net.hosts)
-##print "Testing network connectivity"
-##net.pingAll()
-##net.stop()
-#global_switch = net.get('s1')
-#global_switch.cmd('set-manager ptcp:6640')
-#global_switch.cmd('set Bridge s1 protocols=OpenFlow13')
 
-class SimpleSwitch15(app_manager.RyuApp):
-    OFP_VERSIONS = [ofproto_v1_5.OFP_VERSION]
+# Serving static files
+class GUIServerApp(app_manager.RyuApp):
+    _CONTEXTS = {
+        'wsgi': WSGIApplication,
+    }
 
     def __init__(self, *args, **kwargs):
-        super(SimpleSwitch15, self).__init__(*args, **kwargs)
+        super(GUIServerApp, self).__init__(*args, **kwargs)
+
+        wsgi = kwargs['wsgi']
+        wsgi.register(GUIServerController)
         self.mac_to_port = {}
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -117,3 +131,19 @@ class SimpleSwitch15(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   match=match, actions=actions, data=data)
         datapath.send_msg(out)
+
+class GUIServerController(ControllerBase):
+    def __init__(self, req, link, data, **config):
+        super(GUIServerController, self).__init__(req, link, data, **config)
+        path = "%s/html/" % PATH
+        self.static_app = DirectoryApp(path)
+
+    @route('topology', '/{filename:[^/]*}')
+    def static_handler(self, req, **kwargs):
+        if kwargs['filename']:
+            req.path_info = kwargs['filename']
+        return self.static_app(req)
+
+app_manager.require_app('ryu.app.rest_topology')
+app_manager.require_app('ryu.app.ws_topology')
+app_manager.require_app('ryu.app.ofctl_rest')

@@ -3,7 +3,9 @@ services:
   dispatcher:
     build:
       context: .
-    image: mininet 
+    image: dispathcer 
+    ports:
+      - "5555:5555"
     tty: true
     privileged: true
     network_mode: "host"

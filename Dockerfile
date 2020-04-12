@@ -22,19 +22,25 @@ RUN apt-get update && \
     tcpdump \
     openvswitch-testcontroller && \
     rm -rf /var/lib/apt/lists/* && \
-    ln /usr/bin/ovs-testcontroller /usr/bin/ovs-controller && \
-    curl -kL https://github.com/osrg/ryu/archive/master.tar.gz | tar -xvz && \
-    mv ryu-master ryu && \
-    pip install -U pip && \
+    ln /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
+
+RUN curl -kL https://github.com/osrg/ryu/archive/master.tar.gz | tar -xvz && \
+    mv ryu-master ryu
+
+COPY iot_switch.py ./ryu/ryu/app/
+#COPY iot_switch.py ./
+
+RUN pip install -U pip && \
     cd ryu && pip install -r tools/pip-requires && \
     python ./setup.py install
 
-COPY entrypoint.sh dispatcher.py requirements.txt ./
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
 
-RUN chmod +x entrypoint.sh && \
-    pip install -r requirements.txt 
+COPY entrypoint.sh network_handler.py ./
+RUN chmod +x entrypoint.sh
 
-EXPOSE 6633 6653 6640
+EXPOSE 6633 6653 6640 5555
 
 ENTRYPOINT ["./entrypoint.sh"]
 

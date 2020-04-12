@@ -3,7 +3,11 @@ Openflow SDN aplication controller based on ryu
 Run:
 
 ```
-docker-compose run --rm dispatcher 
+docker build -t dispatcher . 
+docker run -it -p 5555:5555 --rm --privileged -e DISPLAY \
+           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           -v /lib/modules:/lib/modules \
+           dispatcher:latest
 ```
 
 Usefull links:

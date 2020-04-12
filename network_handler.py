@@ -33,9 +33,8 @@ dumpNodeConnections(net.hosts)
 #net.pingAll()
 #net.stop()
 global_switch = net.get('s1')
-global_switch.cmd('set-manager ptcp:6640')
-global_switch.cmd('set Bridge s1 protocols=OpenFlow13')
 
 global_controller = net.get('c0')
-global_controller.cmd('ryu-manager --wsapi-host 0.0.0.0 --wsapi-port 5555 --observe-links ryu.app.iot_switch &')
+global_controller.cmd('ovs-vsctl set Bridge s1 protocols=OpenFlow13')
+global_controller.cmd('ryu-manager --wsapi-host 0.0.0.0 --wsapi-port 5555 --observe-links ryu.app.iot_switch')
 

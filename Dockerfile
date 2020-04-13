@@ -34,6 +34,8 @@ RUN pip install -U pip && \
     cd ryu && pip install -r tools/pip-requires && \
     python ./setup.py install
 
+COPY html/ /usr/local/lib/python2.7/dist-packages/ryu/app/gui_topology/html/ 
+
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 

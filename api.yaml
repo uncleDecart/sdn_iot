@@ -2,82 +2,124 @@ openapi: 3.0.0
 info:
   title: Dispatcher API
   description: HTTP API for Dispatcher service
-  version: 0.0.1
+  version: 0.0.2
 paths:
-  /topology:
-    get:
-      summary: Get topology info
-      description: >-
-        Returns information about devices' topology (how devices connected)
-      operationId: showTopology
+  /nodes/{node_name}:
+    post:
+      summary: Update network node configuration
+      operationId: post_node
+      parameters: 
+      - name: node_name
+        in: path
+        description: Node name
+        required: true
+        schema:
+          type: string
+          format: "s%d"
+      requestBody:
+        description: Optional description in *Markdown*
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NodeConfig'
       tags:
         - topology
       responses:
         200:
           description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Topology"
-        default:
-          $ref: "#/components/responses/Error"
-  /state:
-    get:
-      summary: Get topology state for the given period
-      description: Returns system state for the period given in chronological order.
-      operationId: getState
+  /switch/add/{switch_name}:
+    post:
+      summary: Create new switch in the network
+      operationId: addSwitch
+      parameters: 
+      - name: switch_name
+        in: path
+        description: Switch name
+        required: true
+        schema:
+          type: string
+          format: "s%d"
+
       tags:
-        - state
-      parameters:
-        - $ref: "#/components/parameters/FromDateTime"
-        - $ref: "#/components/parameters/TillDateTime"
-        - $ref: "#/components/parameters/SourceType"
+        - topology
       responses:
         200:
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DevicesState"
-        default:
-          $ref: "#/components/responses/Error"
-  /device:
+          description: Succesful operation
+        403:
+          description: Switch already exists
+  /link/add:
     get:
-      summary: Get device info
-      description: Returns information for device id given
-      operationId: getDeviceInfo
+      summary: Create new link between nodes
+      operationId: add_link
       tags:
-        - device
+        - topology
       parameters:
-        - $ref: "#/components/parameters/DeviceId"
-        - $ref: "#/components/parameters/SourceType"
+        - $ref: "#/components/parameters/FromSwitchId"
+        - $ref: "#/components/parameters/ToSwitchId"
       responses:
         200:
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/DeviceConnections"
+          description: Succesful operation
+        403:
+          description: Node(s) does not exist
+  /test:
+    get:
+      summary: test link
+      operationId: test
+      tags:
+        - topology
+      responses:
+        200:
+          description: Succesful operation
+        
+  /nodes/{node_name}/cmd:
+    post:
+      summary: Run command for node specified
+      operationId: do_cmd
+      parameters: 
+      - name: node_name
+        in: path
+        description: Node name
+        required: true
+        schema:
+          type: string
+          format: "s%d"
+      tags:
+        - topology
+      requestBody:
+        description: Optional description in *Markdown*
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string  
+      responses:
+        200:
+          description: Succesful operation
 components:
   parameters:
-    FromDateTime:
+    FromSwitchId:
       in: query
-      name: from_datetime
+      name: from_switch
       schema:
-        type: integer
+        type: string
       required: true
-      description: >-
-        Limit output with lower bound. Output would start from the element with timestamp
-        greater or equal than specified date-time. Required parameter. Expected UNIX timestamp.
-    TillDateTime:
+      
+    ToSwitchId:
       in: query
-      name: till_datetime
+      name: to_switch
       schema:
-        type: integer
+        type: string
       required: true
-      description: >-
-        Limit output with upper bound. Output would stop before the element with specified date-time.
-        Required parameter. Expected UNIX timestamp.
+
+    NodeName:
+      in: path
+      name: node_name
+      schema:
+        type: string
+      required: true
+
+
     SourceType:
       in: query
       name: source
@@ -88,12 +130,6 @@ components:
       description: >
          * `virtual` - for emulator info
          * `real` - for real devices' info
-    DeviceId:
-      in: query
-      name: device_id
-      schema:
-        type: integer
-      required: true
   responses:
     Error:
       description: Unexpected error
@@ -102,68 +138,21 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
-    Topology:
-      type: array
-      items:
-        $ref: "#/components/schemas/DeviceConnections"
-    DeviceConnections:
-      required:
-        - id
-        - connections
-      properties:
-        id:
-          type: integer
-        connections:
-          $ref: "#/components/schemas/Connections"
-    Connections:
-      type: array
-      items:
-        type: integer
-    DevicesState:
-      type: array
-      items:
-        $ref: "#/components/schemas/DeviceState"
-    DeviceState:
+    NodeConfig:
       type: object
       required:
-        - device_id
-        - status
+        - params
       properties:
-        device_id:
-          type: integer
-        status:
-          type: array
-          items:
-            $ref: "#/components/schemas/DeviceInfo"
-        actions:
-          type: array
-          items:
-            $ref: "#/components/schemas/DeviceAction"
-    DeviceInfo:
+        params:
+          $ref: "#/components/schemas/NodeParameter"
+    NodeParameter:
       type: object
-      required:
-        - time
-        - battery_life
       properties:
-        time:
+        delay:
           type: string
-          format: date-time
-        battery_life:
+          format: "%dms"
+        bw:
           type: integer
-        current_packet:
-          type: string
-    DeviceAction:
-      type: object
-      required:
-        - time
-        - action
-      properties:
-        time:
-          type: string
-          format: date-time
-        action:
-          type: string
-          enum: [send, sleep, receive]
     ErrorResponse:
       required:
         - code

@@ -24,7 +24,7 @@ paths:
             schema:
               $ref: '#/components/schemas/NodeConfig'
       tags:
-        - topology
+        - mininet
       responses:
         200:
           description: Successful operation
@@ -42,7 +42,7 @@ paths:
           format: "s%d"
 
       tags:
-        - topology
+        - mininet
       responses:
         200:
           description: Succesful operation
@@ -53,7 +53,7 @@ paths:
       summary: Create new link between nodes
       operationId: add_link
       tags:
-        - topology
+        - mininet
       parameters:
         - $ref: "#/components/parameters/FromSwitchId"
         - $ref: "#/components/parameters/ToSwitchId"
@@ -67,7 +67,7 @@ paths:
       summary: test link
       operationId: test
       tags:
-        - topology
+        - mininet
       responses:
         200:
           description: Succesful operation
@@ -85,7 +85,7 @@ paths:
           type: string
           format: "s%d"
       tags:
-        - topology
+        - mininet
       requestBody:
         description: Optional description in *Markdown*
         required: true
@@ -96,6 +96,83 @@ paths:
       responses:
         200:
           description: Succesful operation
+          
+    
+  /v1.0/topology/switches:
+    get:
+      summary: get all the switches
+      tags:
+        - ryu-topology
+      responses:
+        200:
+          description: Succesful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Switches"
+  /v1.0/topology/switches/{dpid}:
+    get:
+      summary: get specified switch
+      tags:
+        - ryu-topology
+      parameters: 
+      - name: dpid
+        in: path
+        description: Node name
+        required: true
+        schema:
+          type: integer
+      responses:
+        200:
+          description: Succesful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Switch"
+  /v1.0/topology/links:
+    get:
+      summary: get all the links
+      tags:
+        - ryu-topology
+      responses:
+        200:
+          description: Succesful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Links"
+#  /v1.0/topology/hosts:
+#    get:
+#      summary: get all the hosts
+#      tags:
+#        - ryu-topology
+#      responses:
+#        200:
+#          description: Succesful operation
+#          content:
+#            application/json:
+#              schema:
+#                $ref: "#/components/schemas/Hosts"
+#  /v1.0/topology/hosts/{dpid}:
+#    get:
+#      summary: get the hosts of a switch
+#      tags:
+#        - ryu-topology
+#      parameters: 
+#      - name: dpid
+#        in: path
+#        description: Node name
+#        required: true
+#        schema:
+#          type: integer
+#      responses:
+#        200:
+#          description: Succesful operation
+#          content:
+#            application/json:
+#              schema:
+#                $ref: "#/components/schemas/Host"
+          
 components:
   parameters:
     FromSwitchId:
@@ -138,6 +215,48 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    Switches:
+      type: array
+      items:
+        $ref: "#/components/schemas/Switch"
+    Switch:
+      type: object
+      properties:
+        ports:
+          type: array
+          items:
+            $ref: "#/components/schemas/Port"
+        dpid:
+          type: string
+    Port:
+      type: object
+      required:
+        - hw_addr
+        - name
+        - port_no
+        - dpid
+      properties:
+        hw_addr:
+          type: string
+        name:
+          type: string
+        port_no:
+          type: string
+        dpid:
+          type: string
+    
+    Links:
+      type: array
+      items:
+        $ref: "#/components/schemas/Link"
+    Link:
+      type: object
+      properties:
+        src:
+          $ref: "#/components/schemas/Port"
+        dst:
+          $ref: "#/components/schemas/Port"
+
     NodeConfig:
       type: object
       required:

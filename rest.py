@@ -1,23 +1,33 @@
 #!/usr/bin/python
+from mininet.node import OVSSwitch
 from bottle import Bottle, request
 import time
 
 class Dispatcher(Bottle):
-  def __init__(self, net):
+  def __init__(self, net, sl):
     super(Dispatcher, self).__init__()
     self.net = net
+    self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
-    self.route('/switch/add/<switch_name', method='POST', callback=self.add_switch)
+    self.route('/switch/add/<switch_name>', method='POST', callback=self.add_switch)
+    self.route('/switch/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
+
+
+  def test(self):
+    return "TEST!"
 
   def post_node(self, node_name):
     node = self.net[node_name]
     node.params.update(request.json['params'])
 
   def add_switch(self, switch_name):
-    if not self.net[switch_name]:
-      s = self.net.AddSwitch(switch_name)
+    if switch_name not in self.switch_list:
+      c1 = self.net.get('c1')
+      s = self.net.addSwitch(switch_name, OVSSwitch)
       s.params.update(request.json['params'])
+      s.start([c1])
+      self.switch_list.append(switch_name)
     else:
       bottle.response.status = 403
 

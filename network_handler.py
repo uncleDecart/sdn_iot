@@ -64,7 +64,7 @@ global_controller.cmd(ryu_cmd)
 
 net.start()
 
-root = Dispatcher(net)
+root = Dispatcher(net, ['s1', 's2', 's3', 's4'])
 bottle.debug(True)
 bottle.run(app=root, host='0.0.0.0', port=5556)
 

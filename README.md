@@ -4,7 +4,7 @@ Run:
 
 ```
 docker build -t dispatcher . 
-docker run -it -p 5555:5555 --rm --privileged -e DISPLAY \
+docker run -it -p 5555-5556:5555-5556 --rm --privileged -e DISPLAY \
            -v /tmp/.X11-unix:/tmp/.X11-unix \
            -v /lib/modules:/lib/modules \
            dispatcher:latest

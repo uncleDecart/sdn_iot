@@ -10,7 +10,8 @@ class Dispatcher(Bottle):
     self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/add/<switch_name>', method='POST', callback=self.add_switch)
-    self.route('/switch/test', method='GET', callback=self.test)
+    self.route('/link/add', method='GET', callback=self.add_link)
+    self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
 
 
@@ -26,18 +27,20 @@ class Dispatcher(Bottle):
       c1 = self.net.get('c1')
       s = self.net.addSwitch(switch_name, OVSSwitch)
       s.params.update(request.json['params'])
+      #self.net.addLink(self.net.get('s1'), s)
       s.start([c1])
+      c1.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
       self.switch_list.append(switch_name)
     else:
       bottle.response.status = 403
 
-  def add_link(self, node_a, node_b):
-    a = self.net[node_a]
-    b = self.net[node_b]
-    if not a or not b:
+  def add_link(self):
+    a = request.query.a
+    b = request.query.b
+    if a not in self.switch_list or b not in self.switch_list:
       bottle.response.status = 403
     else:
-      self.net.addLink(a, b)
+      self.net.addLink(self.net.get(a), self.net.get(b))
 
   def do_cmd(self, node_name):
     args = request.body.read()

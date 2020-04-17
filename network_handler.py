@@ -40,7 +40,7 @@ switch_list = ['s1', 's2', 's3', 's4']
 for sn in switch_list:
   s = net.addSwitch(sn, OVSSwitch)
   s.start([c1])
-  c1.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % sn)
+  s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % sn)
 
 h1 = net.addHost('h1', mac='1e:0b:fa:73:69:f1')
 h2 = net.addHost('h2', mac='1e:0b:fa:73:69:f2')
@@ -60,8 +60,7 @@ net.addLink(h2, s4)
 
 net.build()
 
-c1.cmd('ovs-vsctl set Bridge s1 protocols=OpenFlow13')
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.gui_topology.gui_topology &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 c1.cmd(ryu_cmd)
 
 net.start()

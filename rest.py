@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from mininet.node import OVSSwitch
-from bottle import Bottle, request
+from bottle import Bottle, request, response
 import time
 
 class Dispatcher(Bottle):
@@ -32,13 +32,13 @@ class Dispatcher(Bottle):
       c1.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
       self.switch_list.append(switch_name)
     else:
-      bottle.response.status = 403
+      response.status = 403
 
   def add_link(self):
     a = request.query.a
     b = request.query.b
     if a not in self.switch_list or b not in self.switch_list:
-      bottle.response.status = 403
+      response.status = 403
     else:
       self.net.addLink(self.net.get(a), self.net.get(b))
 

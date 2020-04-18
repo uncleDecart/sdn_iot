@@ -144,6 +144,7 @@ class GUIServerController(ControllerBase):
             req.path_info = kwargs['filename']
         return self.static_app(req)
 
+app_manager.require_app('ryu.app.rest_conf_switch')
 app_manager.require_app('ryu.app.rest_topology')
 app_manager.require_app('ryu.app.ws_topology')
 app_manager.require_app('ryu.app.ofctl_rest')

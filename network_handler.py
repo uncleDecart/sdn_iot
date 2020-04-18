@@ -60,8 +60,8 @@ net.addLink(h2, s4)
 
 net.build()
 
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
-c1.cmd(ryu_cmd)
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.rest_qos ryu.app.simple_switch_13 ryu.app.rest_conf_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+print "SHIT IS GOING DOWN %s" % c1.cmd(ryu_cmd)
 
 net.start()
 

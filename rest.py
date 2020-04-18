@@ -7,6 +7,7 @@ class Dispatcher(Bottle):
   def __init__(self, net, sl):
     super(Dispatcher, self).__init__()
     self.net = net
+    self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
     self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/add/<switch_name>', method='POST', callback=self.add_switch)
@@ -25,11 +26,13 @@ class Dispatcher(Bottle):
   def add_switch(self, switch_name):
     if switch_name not in self.switch_list:
       c1 = self.net.get('c1')
-      s = self.net.addSwitch(switch_name, OVSSwitch)
+      str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
+      s = self.net.addSwitch(switch_name, OVSSwitch, mac=str_mac)
+      self.starting_mac += 1 
       s.params.update(request.json['params'])
       #self.net.addLink(self.net.get('s1'), s)
       s.start([c1])
-      c1.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
+      s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
       self.switch_list.append(switch_name)
     else:
       response.status = 403

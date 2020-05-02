@@ -15,7 +15,6 @@ class Dispatcher(Bottle):
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
 
-
   def test(self):
     return "TEST!"
 
@@ -30,9 +29,8 @@ class Dispatcher(Bottle):
       s = self.net.addSwitch(switch_name, OVSSwitch, mac=str_mac)
       self.starting_mac += 1 
       s.params.update(request.json['params'])
-      #self.net.addLink(self.net.get('s1'), s)
-      s.start([c1])
       s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
+      s.start([c1])
       self.switch_list.append(switch_name)
     else:
       response.status = 403
@@ -44,6 +42,7 @@ class Dispatcher(Bottle):
       response.status = 403
     else:
       self.net.addLink(self.net.get(a), self.net.get(b))
+      self.net.start()
 
   def do_cmd(self, node_name):
     args = request.body.read()

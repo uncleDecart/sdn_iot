@@ -60,7 +60,8 @@ net.addLink(h2, s4)
 
 net.build()
 
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+#ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology" % (CONTROLLER_HOST, CONTROLLER_PORT)
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 #print "FUCK ME %s" % c1.cmd(ryu_cmd)
 c1.cmd(ryu_cmd)
 

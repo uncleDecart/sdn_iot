@@ -1,5 +1,12 @@
 Openflow SDN aplication controller based on ryu 
 
+After clone run:
+```
+git submodule update --init --recursive
+```
+
+Notice: ryu submodule must be latest master commit
+
 Run:
 
 ```

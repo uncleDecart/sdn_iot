@@ -1,13 +1,25 @@
 version: '3'
 services:
+
+  db:
+    image: mysql:5.7
+    ports:
+      - "32000:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/:ro
+
   dispatcher:
     build:
       context: .
     image: dispathcer 
     ports:
-      - "5555:5555"
+      - 0.0.0.0:5555:5555
+      - 0.0.0.0:5556:5556
     tty: true
     privileged: true
-    network_mode: "host"
     volumes:
      - /lib/modules:/lib/modules
+    depends_on:
+      - db

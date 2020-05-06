@@ -1,0 +1,3 @@
+[submodule "external/ryu"]
+	path = external/ryu
+	url = git@github.com:uncleDecart/ryu.git

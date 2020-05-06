@@ -2,10 +2,21 @@
 from mininet.node import OVSSwitch
 from bottle import Bottle, request, response
 import time
+import json
+import mysql.connector
 
 class Dispatcher(Bottle):
   def __init__(self, net, sl):
     super(Dispatcher, self).__init__()
+    config = {
+      'user' : 'root',
+      'password' : 'root',
+      'host' : 'db',
+      'port' : '3306',
+      'database' : 'emulator'
+    }
+    self.connection = mysql.connector.connect(**config)
+    self.cursor = self.connection.cursor()
     self.net = net
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
     self.switch_list = sl[:]
@@ -14,6 +25,7 @@ class Dispatcher(Bottle):
     self.route('/link/add', method='GET', callback=self.add_link)
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
+    self.route('/events', method='GET', callback=self.get_events)
 
   def test(self):
     return "TEST!"
@@ -71,3 +83,14 @@ class Dispatcher(Bottle):
       output += data
       node.waiting = False
     return output
+
+  def get_events(self):
+    self.cursor.execute('SELECT * FROM events')
+    hdrs = [x[0] for x in self.cursor.description]
+    rv = self.cursor.fetchall()
+    print "FUCK ME ", rv
+    print "ALSO : ", hdrs
+    res=[]
+    for el in rv:
+      res.append(dict(zip(row_headers, result)))
+    return json.dumps(res)

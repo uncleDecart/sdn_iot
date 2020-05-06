@@ -39,11 +39,11 @@ switch_list = ['s1', 's2', 's3', 's4']
 
 for sn in switch_list:
   s = net.addSwitch(sn, OVSSwitch)
-  s.start([c1])
   s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % sn)
 
-h1 = net.addHost('h1', mac='1e:0b:fa:73:69:f1')
-h2 = net.addHost('h2', mac='1e:0b:fa:73:69:f2')
+h1 = net.addHost('h1')
+
+h2 = net.addHost('h2')
 
 s1 = net.get('s1')
 s2 = net.get('s2')
@@ -60,10 +60,18 @@ net.addLink(h2, s4)
 
 net.build()
 
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.gui_topology.gui_topology ryu.app.rest_qos ryu.app.simple_switch_13 ryu.app.rest_conf_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+#print "FUCK ME %s" % c1.cmd(ryu_cmd)
 c1.cmd(ryu_cmd)
 
 net.start()
+net.pingAll()
+
+c1.start()
+
+for sn in switch_list:
+  s = net[sn]
+  s.start([c1])
 
 root = Dispatcher(net, switch_list)
 bottle.debug(True)

@@ -68,7 +68,7 @@ c1.cmd(ryu_cmd)
 net.start()
 net.pingAll()
 
-c1.start()
+#c1.start()
 
 for sn in switch_list:
   s = net[sn]

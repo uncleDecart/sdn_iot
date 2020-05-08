@@ -26,8 +26,8 @@ class Dispatcher(Bottle):
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
     self.route('/events', method='GET', callback=self.get_events)
-    self.route('/', method = 'OPTIONS')
-    self.route('/<path:path>', method = 'OPTIONS')
+    self.route('/', method = 'OPTIONS', callback=self.options_handler)
+    self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
 
   def options_handler(self, path = None):
       return

@@ -66,13 +66,15 @@ ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.i
 c1.cmd(ryu_cmd)
 
 net.start()
-net.pingAll()
+#net.pingAll()
 
 #c1.start()
 
 for sn in switch_list:
   s = net[sn]
   s.start([c1])
+
+CLI(net)
 
 class EnableCors(object):
   name = 'enable_cors'

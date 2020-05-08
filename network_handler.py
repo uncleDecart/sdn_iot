@@ -74,7 +74,7 @@ for sn in switch_list:
   s = net[sn]
   s.start([c1])
 
-CLI(net)
+#CLI(net)
 
 class EnableCors(object):
   name = 'enable_cors'

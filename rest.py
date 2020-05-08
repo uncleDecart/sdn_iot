@@ -23,7 +23,8 @@ class Dispatcher(Bottle):
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
     self.route('/switch/<switch_name>', method='DELETE', callback=self.del_switch)
-    self.route('/link/', method='POST', callback=self.add_link)
+    self.route('/link', method='POST', callback=self.add_link)
+    self.route('/link', method='DELETE', callback=self.del_link)
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
     self.route('/events', method='GET', callback=self.get_events)
@@ -58,6 +59,15 @@ class Dispatcher(Bottle):
       self.switch_list.remove(switch_name)
     else:
       response.status = 403
+
+  def del_link(self):
+    a = request.json['a']
+    b = request.json['b']
+    if a not in self.switch_list or b not in self.switch_list:
+      response.status = 403
+    else:
+      self.net.configLinkStatus(a, b, 'down')
+      self.net.start()
 
   def add_link(self):
     a = request.json['a']

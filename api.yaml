@@ -48,6 +48,25 @@ paths:
           description: Succesful operation
         403:
           description: Switch already exists
+    delete:
+      summary: Delete  switch in the network
+      operationId: deleteSwitch
+      parameters: 
+      - name: switch_name
+        in: path
+        description: Switch name
+        required: true
+        schema:
+          type: string
+          format: "s%d"
+
+      tags:
+        - mininet
+      responses:
+        200:
+          description: Succesful operation
+        403:
+          description: Switch does not exist
   /link/:
     post:
       summary: Create new link between nodes

@@ -21,8 +21,8 @@ class Dispatcher(Bottle):
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
     self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
-    self.route('/switch/add/<switch_name>', method='POST', callback=self.add_switch)
-    self.route('/link/add', method='GET', callback=self.add_link)
+    self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
+    self.route('/link/', method='POST', callback=self.add_link)
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
     self.route('/events', method='GET', callback=self.get_events)

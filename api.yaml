@@ -28,7 +28,7 @@ paths:
       responses:
         200:
           description: Successful operation
-  /switch/add/{switch_name}:
+  /switch/{switch_name}:
     post:
       summary: Create new switch in the network
       operationId: addSwitch
@@ -48,8 +48,8 @@ paths:
           description: Succesful operation
         403:
           description: Switch already exists
-  /link/add:
-    get:
+  /link/:
+    post:
       summary: Create new link between nodes
       operationId: add_link
       tags:

@@ -21,8 +21,8 @@ from mininet.log import setLogLevel, info
 from mininet.link import TCLink, Intf
 
 from rest import Dispatcher
-from wsgiproxy.app import WSGIProxyApp
 import bottle
+from bottle import response
 
 CONTROLLER_HOST = '0.0.0.0'
 CONTROLLER_PORT = '5555'
@@ -92,6 +92,7 @@ class EnableCors(object):
     return _enable_cors
 
 root = Dispatcher(net, switch_list)
+root.install(EnableCors())
 bottle.debug(True)
 bottle.install(EnableCors())
 bottle.run(app=root, host='0.0.0.0', port=5556)

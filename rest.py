@@ -53,9 +53,12 @@ class Dispatcher(Bottle):
       self.switch_list.append(switch_name)
     else:
       response.status = 403
+
   def del_switch(self, switch_name):
     if switch_name in self.switch_list:
       self.net.get(switch_name).stop(True)
+      self.net.get(switch_name).terminate()
+      self.net.get(switch_name).cleanup()
       self.switch_list.remove(switch_name)
     else:
       response.status = 403
@@ -76,6 +79,7 @@ class Dispatcher(Bottle):
       response.status = 403
     else:
       self.net.addLink(self.net.get(a), self.net.get(b))
+      self.net.configLinkStatus(a, b, 'up')
       self.net.start()
 
   def do_cmd(self, node_name):

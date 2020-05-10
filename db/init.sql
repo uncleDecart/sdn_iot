@@ -2,14 +2,27 @@ CREATE DATABASE emulator;
 use emulator;
 
 CREATE TABLE charge_state (
-  dpid INT NOT NULL UNIQUE,
-  charge INT NOT NULL,
+  dpid VARCHAR(20) NOT NULL,
+  charge FLOAT NOT NULL,
+  ts TIMESTAMP NOT NULL,
+  PRIMARY KEY(dpid)
+);
+
+CREATE TABLE send_events (
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  dpid VARCHAR(20) NOT NULL,
+  from_mac VARCHAR(20) NOT NULL,
+  to_mac VARCHAR(20) NOT NULL,
+  from_port VARCHAR(20) NOT NULL,
+  to_port VARCHAR(20) NOT NULL,
   ts TIMESTAMP NOT NULL
 );
 
-CREATE TABLE events (
-  dpid INT NOT NULL UNIQUE,
-  from_mac VARCHAR(20) NOT NULL,
-  to_mac VARCHAR(20) NOT NULL,
-  port INT NOT NULL
+CREATE TABLE charge_events (
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  dpid VARCHAR(20) NOT NULL,
+  charge FLOAT NOT NULL,
+  ts TIMESTAMP NOT NULL
 );
+
+

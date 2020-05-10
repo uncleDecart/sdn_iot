@@ -17,6 +17,7 @@ class Dispatcher(Bottle):
     }
     self.connection = mysql.connector.connect(**config)
     self.cursor = self.connection.cursor()
+    print "SOME SHIT DUDUDUDUDU"
     self.net = net
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
     self.switch_list = sl[:]
@@ -27,7 +28,7 @@ class Dispatcher(Bottle):
     self.route('/link', method='DELETE', callback=self.del_link)
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
-    self.route('/events', method='GET', callback=self.get_events)
+    self.route('/events/<dpid>', method='GET', callback=self.get_events_page)
     self.route('/', method = 'OPTIONS', callback=self.options_handler)
     self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
 
@@ -110,13 +111,17 @@ class Dispatcher(Bottle):
       node.waiting = False
     return output
 
-  def get_events(self):
-    self.cursor.execute('SELECT * FROM events')
+  def get_events_page(self, dpid):
+    perpage = int(request.query['perpage'])
+    startat = int(request.query['page'])*perpage
+
+    db_query = 'SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s ORDER BY ts DESC LIMIT %s OFFSET %s;'
+    self.cursor.execute(db_query, (dpid,startat,perpage))
+
     hdrs = [x[0] for x in self.cursor.description]
     rv = self.cursor.fetchall()
-    print "FUCK ME ", rv
-    print "ALSO : ", hdrs
     res=[]
     for el in rv:
-      res.append(dict(zip(row_headers, result)))
-    return json.dumps(res)
+      res.append(dict(zip(hdrs, el)))
+    return json.dumps(res, indent=4, sort_keys=True, default=str)
+  

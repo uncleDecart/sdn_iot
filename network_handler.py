@@ -57,7 +57,7 @@ net.start()
 
 
 c0 = net['c0']
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 c0.cmd(ryu_cmd)
 
 net.pingAll()

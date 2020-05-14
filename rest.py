@@ -44,7 +44,7 @@ class Dispatcher(Bottle):
 
   def add_switch(self, switch_name):
     if switch_name not in self.switch_list:
-      c1 = self.net.get('c1')
+      c1 = self.net.get('c0')
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       s = self.net.addSwitch(switch_name, OVSSwitch, mac=str_mac)
       self.starting_mac += 1 

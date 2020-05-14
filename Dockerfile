@@ -36,6 +36,7 @@ COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
 COPY entrypoint.sh network_handler.py rest.py ./
+COPY external/ryu/ryu/app/gui_topology/html /usr/local/lib/python2.7/dist-packages/ryu/app/gui_topology/html/
 RUN chmod +x entrypoint.sh
 
 EXPOSE 6633 6653 6640 5555 5556

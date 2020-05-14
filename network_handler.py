@@ -2,7 +2,6 @@ import os
 
 from webob.static import DirectoryApp
 
-
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.base import app_manager
 
@@ -46,9 +45,7 @@ class MyTopo( Topo ):
 
     self.addLink(h1, s1)
     self.addLink(s1, s2)
-    self.addLink(s2, s4)
-    self.addLink(s1, s4)
-    self.addLink(s1, s3)
+    self.addLink(s2, s3)
     self.addLink(s3, s4)
     self.addLink(h2, s4)
 
@@ -56,23 +53,14 @@ setLogLevel('debug')
 topo = MyTopo()
 net = Mininet(topo, switch=OVSSwitch, controller=RemoteController('c0', ip='127.0.0.1', port=6653))
 
-for sn in switch_list:
-  s = net[sn]
-  s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % sn)
+net.start()
 
-#net.build()
 
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch_13 &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 c0 = net['c0']
-#ryu_cmd = "ryu-manager --observe-links ryu.app.simple_switch_13 &"
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 c0.cmd(ryu_cmd)
 
-net.start()
-#net.pingAll()
-
-#c1.start()
-
-#CLI(net)
+net.pingAll()
 
 class EnableCors(object):
   name = 'enable_cors'

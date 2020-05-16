@@ -2,7 +2,6 @@ import os
 
 from webob.static import DirectoryApp
 
-
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.base import app_manager
 
@@ -20,6 +19,8 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 from mininet.link import TCLink, Intf
 
+import mysql.connector
+
 from rest import Dispatcher
 import bottle
 from bottle import response
@@ -28,53 +29,38 @@ CONTROLLER_HOST = '0.0.0.0'
 CONTROLLER_PORT = '5555'
 CONTROLLER_URI = 'http://{}:{}/'.format(CONTROLLER_HOST, CONTROLLER_PORT)
 
-setLogLevel('info')
-print "Create and test a simple network"
-#topo = SingleSwitchTopo(n=4)
-net = Mininet(switch=OVSSwitch, controller=RemoteController)
-c1 = RemoteController('c1', ip='127.0.0.1', port=6653)
-net.addController(c1)
-
 switch_list = ['s1', 's2', 's3', 's4']
 
-for sn in switch_list:
-  s = net.addSwitch(sn, OVSSwitch)
-  s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % sn)
+class MyTopo( Topo ):
+  "Simple topology example."
 
-h1 = net.addHost('h1')
+  def build( self ):
+    h1 = self.addHost('h1')
+    h2 = self.addHost('h2')
 
-h2 = net.addHost('h2')
+    s1 = self.addSwitch('s1')
+    s2 = self.addSwitch('s2')
+    s3 = self.addSwitch('s3')
+    s4 = self.addSwitch('s4')
 
-s1 = net.get('s1')
-s2 = net.get('s2')
-s3 = net.get('s3')
-s4 = net.get('s4')
+    self.addLink(h1, s1)
+    self.addLink(s1, s2)
+    self.addLink(s2, s3)
+    self.addLink(s3, s4)
+    self.addLink(h2, s4)
 
-net.addLink(h1, s1)
-net.addLink(s1, s2)
-net.addLink(s2, s4)
-net.addLink(s1, s4)
-net.addLink(s1, s3)
-net.addLink(s3, s4)
-net.addLink(h2, s4)
-
-net.build()
-
-#ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.simple_switch ryu.app.gui_topology.gui_topology" % (CONTROLLER_HOST, CONTROLLER_PORT)
-ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
-#print "FUCK ME %s" % c1.cmd(ryu_cmd)
-c1.cmd(ryu_cmd)
+setLogLevel('debug')
+topo = MyTopo()
+net = Mininet(topo, switch=OVSSwitch, controller=RemoteController('c0', ip='127.0.0.1', port=6653))
 
 net.start()
-#net.pingAll()
 
-#c1.start()
 
-for sn in switch_list:
-  s = net[sn]
-  s.start([c1])
+c0 = net['c0']
+ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+c0.cmd(ryu_cmd)
 
-#CLI(net)
+net.pingAll()
 
 class EnableCors(object):
   name = 'enable_cors'
@@ -100,5 +86,4 @@ bottle.install(EnableCors())
 bottle.run(app=root, host='0.0.0.0', port=5556)
 
 net.stop()
-
 

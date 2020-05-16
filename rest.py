@@ -109,6 +109,11 @@ class Dispatcher(Bottle):
       data = node.monitor(timeoutms=1000)
       output += data
       node.waiting = False
+    
+    output = output.replace('<', '&lt;')
+    output = output.replace('>', '&gt;')
+
+    output = output.replace('\n', '<br>')
     return output
 
   def get_events_page(self, dpid):

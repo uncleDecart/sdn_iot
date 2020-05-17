@@ -67,20 +67,49 @@ paths:
           description: Succesful operation
         403:
           description: Switch does not exist
-  /link/:
+  /link:
     post:
       summary: Create new link between nodes
       operationId: add_link
       tags:
         - mininet
       parameters:
-        - $ref: "#/components/parameters/FromSwitchId"
-        - $ref: "#/components/parameters/ToSwitchId"
+      - in: query
+        name: a
+        schema:
+          type: string
+        description: node name
+      - in: query
+        name: b
+        schema:
+          type: string
+        description: node name
       responses:
         200:
           description: Succesful operation
         403:
           description: Node(s) does not exist
+    delete:
+      summary: Delete link between nodes
+      operationId: del_link
+      tags:
+        - mininet
+      parameters:
+      - in: query
+        name: a
+        schema:
+          type: string
+        description: node name
+      - in: query
+        name: b
+        schema:
+          type: string
+        description: node name
+      responses:
+        200:
+          description: Succesful operation
+        403:
+          description: Link does not exist
   /test:
     get:
       summary: test link
@@ -96,13 +125,18 @@ paths:
       summary: Run command for node specified
       operationId: do_cmd
       parameters: 
-      - name: node_name
-        in: path
+      - in: path
+        name: node_name
         description: Node name
         required: true
         schema:
           type: string
           format: "s%d"
+      - in: query
+        name: timeout
+        schema:
+          type: integer
+        description: Seconds before reaching timeout of operation
       tags:
         - mininet
       requestBody:

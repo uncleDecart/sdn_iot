@@ -84,6 +84,8 @@ class Dispatcher(Bottle):
       self.net.start()
 
   def do_cmd(self, node_name):
+    print(request.query['timeout'])
+    timeout = float(request.query['timeout'])
     args = request.body.read()
     node = self.net[node_name]
     rest = args.split(' ')
@@ -98,7 +100,7 @@ class Dispatcher(Bottle):
     while node.waiting:
       exec_time = time.time() - init_time
       #timeout of 5 seconds
-      if exec_time > 5:
+      if exec_time > timeout:
         break
       data = node.monitor(timeoutms=1000)
       output += data

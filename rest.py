@@ -4,6 +4,8 @@ from bottle import Bottle, request, response
 import time
 import json
 import mysql.connector
+import requests
+import datetime
 
 class Dispatcher(Bottle):
   def __init__(self, net, sl):
@@ -17,9 +19,18 @@ class Dispatcher(Bottle):
     }
     self.connection = mysql.connector.connect(**config)
     self.cursor = self.connection.cursor()
-    print "SOME SHIT DUDUDUDUDU"
+
     self.net = net
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
+    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+    ts = time.time()
+    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
+    for el in l:
+      print "FUKKKKKK ME ", el['dpid']
+      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)", (el['dpid'], 10000, timestamp))
+    self.connection.commit()
+
     self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
@@ -28,7 +39,11 @@ class Dispatcher(Bottle):
     self.route('/link', method='DELETE', callback=self.del_link)
     self.route('/test', method='GET', callback=self.test)
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
+
     self.route('/events/<dpid>', method='GET', callback=self.get_events_page)
+    self.route('/events/<dpid>/charge_state', method='GET', callback=self.get_charge_state)
+    self.route('/events/<dpid>/charge_events', method='GET', callback=self.get_charge_events)
+
     self.route('/', method = 'OPTIONS', callback=self.options_handler)
     self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
 
@@ -44,13 +59,12 @@ class Dispatcher(Bottle):
 
   def add_switch(self, switch_name):
     if switch_name not in self.switch_list:
-      c1 = self.net.get('c0')
+      c0 = self.net.get('c0')
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       s = self.net.addSwitch(switch_name, OVSSwitch, mac=str_mac)
       self.starting_mac += 1 
       s.params.update(request.json['params'])
-      s.cmd('ovs-vsctl set Bridge %s protocols=OpenFlow13' % switch_name)
-      s.start([c1])
+      s.start([c0])
       self.switch_list.append(switch_name)
     else:
       response.status = 403
@@ -122,13 +136,31 @@ class Dispatcher(Bottle):
     perpage = int(request.query['perpage'])
     startat = int(request.query['page'])*perpage
 
-    db_query = 'SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s ORDER BY ts DESC LIMIT %s OFFSET %s;'
-    self.cursor.execute(db_query, (dpid,startat,perpage))
+    db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
+    return self.jsonify_query(db_query, dpid, startat, perpage)
+
+  def get_charge_state(self, dpid):
+    perpage = int(request.query['perpage'])
+    startat = int(request.query['page'])*perpage
+    return self.jsonify_query(self.paginate('SELECT * FROM charge_state WHERE dpid = %s'),
+                                            dpid, perpage, startat)
+
+  def get_charge_events(self, dpid):
+    perpage = int(request.query['perpage'])
+    startat = int(request.query['page'])*perpage
+    return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
+
+  def paginate(self, query):
+    return query + ' ORDER BY ts DESC LIMIT %s OFFSET %s;'
+
+  def jsonify_query(self, db_query, *args):
+    self.cursor.execute(db_query, args)
 
     hdrs = [x[0] for x in self.cursor.description]
     rv = self.cursor.fetchall()
     res=[]
     for el in rv:
       res.append(dict(zip(hdrs, el)))
+    response.content_type = 'application/json'
     return json.dumps(res, indent=4, sort_keys=True, default=str)
-  
+

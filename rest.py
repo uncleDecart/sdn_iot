@@ -18,6 +18,7 @@ class Dispatcher(Bottle):
       'database' : 'emulator'
     }
     self.connection = mysql.connector.connect(**config)
+    self.connection.autocommit = True
     self.cursor = self.connection.cursor()
 
     self.net = net
@@ -28,7 +29,7 @@ class Dispatcher(Bottle):
 
     for el in l:
       print "FUKKKKKK ME ", el['dpid']
-      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)", (el['dpid'], 10000, timestamp))
+      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)", (el['dpid'], 100000, timestamp))
     self.connection.commit()
 
     self.switch_list = sl[:]
@@ -42,7 +43,7 @@ class Dispatcher(Bottle):
 
     self.route('/events/<dpid>', method='GET', callback=self.get_events_page)
     self.route('/events/<dpid>/total', method='GET', callback=self.get_events_total)
-    self.route('/events/<dpid>/charge_state', method='GET', callback=self.get_charge_state)
+    self.route('/events/charge_state', method='GET', callback=self.get_charge_state)
     self.route('/events/<dpid>/charge_events', method='GET', callback=self.get_charge_events)
     self.route('/events/<dpid>/charge_events/total', method='GET', callback=self.get_charge_total)
 
@@ -145,11 +146,8 @@ class Dispatcher(Bottle):
     db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
     return self.jsonify_query(db_query, dpid, perpage, startat)
 
-  def get_charge_state(self, dpid):
-    perpage = int(request.query['perpage'])
-    startat = int(request.query['page'])*perpage
-    return self.jsonify_query(self.paginate('SELECT * FROM charge_state WHERE dpid = %s'),
-                                            dpid, perpage, startat)
+  def get_charge_state(self):
+    return self.jsonify_query('SELECT * FROM charge_state')
 
   def get_charge_total(self, dpid):
     db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'

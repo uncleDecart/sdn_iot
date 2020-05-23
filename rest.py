@@ -41,8 +41,10 @@ class Dispatcher(Bottle):
     self.route('/nodes/<node_name>/cmd', method='POST', callback=self.do_cmd)
 
     self.route('/events/<dpid>', method='GET', callback=self.get_events_page)
+    self.route('/events/<dpid>/total', method='GET', callback=self.get_events_total)
     self.route('/events/<dpid>/charge_state', method='GET', callback=self.get_charge_state)
     self.route('/events/<dpid>/charge_events', method='GET', callback=self.get_charge_events)
+    self.route('/events/<dpid>/charge_events/total', method='GET', callback=self.get_charge_total)
 
     self.route('/', method = 'OPTIONS', callback=self.options_handler)
     self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
@@ -132,12 +134,16 @@ class Dispatcher(Bottle):
     output = output.replace('\n', '<br>')
     return output
 
+  def get_events_total(self, dpid):
+    db_query = 'SELECT count(*) as total FROM send_events WHERE dpid = %s'
+    return self.jsonify_query(db_query, dpid)
+
   def get_events_page(self, dpid):
     perpage = int(request.query['perpage'])
     startat = int(request.query['page'])*perpage
 
     db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
-    return self.jsonify_query(db_query, dpid, startat, perpage)
+    return self.jsonify_query(db_query, dpid, perpage, startat)
 
   def get_charge_state(self, dpid):
     perpage = int(request.query['perpage'])
@@ -145,13 +151,17 @@ class Dispatcher(Bottle):
     return self.jsonify_query(self.paginate('SELECT * FROM charge_state WHERE dpid = %s'),
                                             dpid, perpage, startat)
 
+  def get_charge_total(self, dpid):
+    db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'
+    return self.jsonify_query(db_query, dpid)
+
   def get_charge_events(self, dpid):
     perpage = int(request.query['perpage'])
     startat = int(request.query['page'])*perpage
     return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
 
   def paginate(self, query):
-    return query + ' ORDER BY ts DESC LIMIT %s OFFSET %s;'
+    return query + ' ORDER BY id DESC LIMIT %s OFFSET %s;'
 
   def jsonify_query(self, db_query, *args):
     self.cursor.execute(db_query, args)

@@ -6,9 +6,31 @@ import json
 import mysql.connector
 import requests
 import datetime
+import os
+
+from mininet.net import Mininet
+from mininet.util import dumpNodeConnections
+from mininet.log import setLogLevel
+from mininet.node import OVSController, RemoteController
+from mininet.net import Mininet
+from mininet.node import Controller, RemoteController, OVSController
+from mininet.node import CPULimitedHost, Host, Node
+from mininet.node import OVSKernelSwitch, UserSwitch, OVSSwitch
+from mininet.node import IVSSwitch
+from mininet.cli import CLI
+from mininet.log import setLogLevel, info
+from mininet.link import TCLink, Intf
+
+from interactive_topo import TopoHandler, MyTopo
+
+CONTROLLER_HOST = '0.0.0.0'
+CONTROLLER_PORT = '5555'
+CONTROLLER_URI = 'http://{}:{}/'.format(CONTROLLER_HOST, CONTROLLER_PORT)
+
+setLogLevel('debug')
 
 class Dispatcher(Bottle):
-  def __init__(self, net, sl):
+  def __init__(self):
     super(Dispatcher, self).__init__()
     config = {
       'user' : 'root',
@@ -21,18 +43,12 @@ class Dispatcher(Bottle):
     self.connection.autocommit = True
     self.cursor = self.connection.cursor()
 
-    self.net = net
+    self.topo_handler = TopoHandler()
+    self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+    self.start_net()
+
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
-    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
-    for el in l:
-      print "FUKKKKKK ME ", el['dpid']
-      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)", (el['dpid'], 100000, timestamp))
-    self.connection.commit()
-
-    self.switch_list = sl[:]
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
     self.route('/switch/<switch_name>', method='DELETE', callback=self.del_switch)
@@ -50,8 +66,41 @@ class Dispatcher(Bottle):
     self.route('/', method = 'OPTIONS', callback=self.options_handler)
     self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
 
+    self.route('/net/start', method='GET', callback=self.start_net)
+    self.route('/net/stop', method='GET', callback=self.stop_net)
+
   def options_handler(self, path = None):
       return
+
+  def start_net(self):
+    self.net = Mininet(MyTopo(self.topo_handler), switch=OVSSwitch,
+                       controller=RemoteController('c0', ip='127.0.0.1', port=6653))
+    self.net.start()
+    self.net['c0'].cmd(self.ryu_cmd)
+    self.net.pingAll()
+    ts = time.time()
+    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+    for el in l:
+      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
+                          (el['dpid'], 10000, timestamp))
+    self.connection.commit()
+    self.is_net_started = True
+ 
+  def stop_net(self):
+    self.net.stop()
+    os.system('fuser -k 6653/tcp') # kill mininet controller
+    self.is_net_started = False 
+
+  def update_mac_to_dpid(self):
+    self.cursor.execute("DELETE FROM mac_to_dpid")
+    self.connection.commit()
+    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+    for el in l:
+      for mac in el['ports']:
+        self.cursor.execute("REPLACE INTO mac_to_dpid (mac_addr, dpid) VALUES (%s, %s)",
+                            (mac['hw_addr'], el['dpid']))
+    self.connection.commit()
 
   def test(self):
     return "TEST!"
@@ -61,44 +110,43 @@ class Dispatcher(Bottle):
     node.params.update(request.json['params'])
 
   def add_switch(self, switch_name):
-    if switch_name not in self.switch_list:
+    if switch_name not in self.topo_handler.get_switches():
       c0 = self.net.get('c0')
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
-      s = self.net.addSwitch(switch_name, OVSSwitch, mac=str_mac)
+      self.topo_handler.add_switch(switch_name)
       self.starting_mac += 1 
-      s.params.update(request.json['params'])
-      s.start([c0])
-      self.switch_list.append(switch_name)
+      #s.params.update(request.json['params'])
+      #s.start([c0])
     else:
       response.status = 403
 
   def del_switch(self, switch_name):
-    if switch_name in self.switch_list:
-      self.net.get(switch_name).stop(True)
-      self.net.get(switch_name).terminate()
-      self.net.get(switch_name).cleanup()
-      self.switch_list.remove(switch_name)
+    if switch_name in self.topo_handler.get_switches():
+      self.topo_handler.delete_switch(switch_name)
     else:
       response.status = 403
 
   def del_link(self):
     a = request.json['a']
     b = request.json['b']
-    if a not in self.switch_list or b not in self.switch_list:
+    if (a,b) not in self.topo_handler.get_links() and (b,a) not in self.topo_handler.get_links():
       response.status = 403
     else:
       self.net.configLinkStatus(a, b, 'down')
+      self.update_mac_to_dpid()
+      if (a,b) in self.topo_handler.get_links():
+        self.topo_handler.delete_link((a,b))
+      else:
+        self.topo_handler.delete_link((a,b))
       self.net.start()
 
   def add_link(self):
     a = request.json['a']
     b = request.json['b']
-    if a not in self.switch_list or b not in self.switch_list:
+    if a not in self.topo_handler.get_switches() or b not in self.topo_handler.get_switches():
       response.status = 403
     else:
-      self.net.addLink(self.net.get(a), self.net.get(b))
-      self.net.configLinkStatus(a, b, 'up')
-      self.net.start()
+      self.topo_handler.add_link((a,b))
 
   def do_cmd(self, node_name):
     print(request.query['timeout'])

@@ -1,4 +1,4 @@
-FROM debian:9.8-slim
+FROM debian:9.8-slim 
 
 MAINTAINER Pavel Abramov <uncle.decart@gmail.com>
 
@@ -20,6 +20,7 @@ RUN apt-get update && \
     net-tools \
     openvswitch-switch \
     tcpdump \
+    psmisc \
     openvswitch-testcontroller && \
     rm -rf /var/lib/apt/lists/* && \
     ln /usr/bin/ovs-testcontroller /usr/bin/ovs-controller
@@ -35,7 +36,7 @@ COPY external/ryu/ryu/app/gui_topology/html /usr/local/lib/python2.7/dist-packag
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY entrypoint.sh network_handler.py rest.py ./
+COPY entrypoint.sh network_handler.py rest.py interactive_topo.py ./
 COPY external/ryu/ryu/app/gui_topology/html /usr/local/lib/python2.7/dist-packages/ryu/app/gui_topology/html/
 RUN chmod +x entrypoint.sh
 

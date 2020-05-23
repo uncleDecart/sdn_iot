@@ -25,4 +25,8 @@ CREATE TABLE charge_events (
   ts TIMESTAMP NOT NULL
 );
 
-
+CREATE TABLE mac_to_dpid (
+  mac_addr VARCHAR(20) NOT NULL,
+  dpid VARCHAR(20) NOT NULL,
+  PRIMARY KEY(mac_addr)
+);

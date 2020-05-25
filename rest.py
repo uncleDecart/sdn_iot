@@ -45,6 +45,8 @@ class Dispatcher(Bottle):
 
     self.topo_handler = TopoHandler()
     self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+
+    self.is_net_started = False 
     self.start_net()
 
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
@@ -68,29 +70,39 @@ class Dispatcher(Bottle):
 
     self.route('/net/start', method='GET', callback=self.start_net)
     self.route('/net/stop', method='GET', callback=self.stop_net)
+    self.route('/net/status', method='GET', callback=self.net_status)
 
   def options_handler(self, path = None):
       return
 
   def start_net(self):
-    self.net = Mininet(MyTopo(self.topo_handler), switch=OVSSwitch,
-                       controller=RemoteController('c0', ip='127.0.0.1', port=6653))
-    self.net.start()
-    self.net['c0'].cmd(self.ryu_cmd)
-    self.net.pingAll()
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
-    for el in l:
-      self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
-                          (el['dpid'], 10000, timestamp))
-    self.connection.commit()
-    self.is_net_started = True
+    if self.is_net_started:
+      response.status = 403
+    else:
+      self.net = Mininet(MyTopo(self.topo_handler), switch=OVSSwitch,
+                         controller=RemoteController('c0', ip='127.0.0.1', port=6653))
+      self.net.start()
+      self.net['c0'].cmd(self.ryu_cmd)
+      self.net.pingAll()
+      ts = time.time()
+      timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+      l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+      for el in l:
+        self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
+                            (el['dpid'], 10000, timestamp))
+      self.connection.commit()
+      self.is_net_started = True
  
   def stop_net(self):
-    self.net.stop()
-    os.system('fuser -k 6653/tcp') # kill mininet controller
-    self.is_net_started = False 
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      self.net.stop()
+      os.system('fuser -k 6653/tcp') # kill mininet controller
+      self.is_net_started = False 
+
+  def net_status(self):
+    return {"status" : self.is_net_started}
 
   def update_mac_to_dpid(self):
     self.cursor.execute("DELETE FROM mac_to_dpid")
@@ -106,11 +118,14 @@ class Dispatcher(Bottle):
     return "TEST!"
 
   def post_node(self, node_name):
-    node = self.net[node_name]
-    node.params.update(request.json['params'])
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      node = self.net[node_name]
+      node.params.update(request.json['params'])
 
   def add_switch(self, switch_name):
-    if switch_name not in self.topo_handler.get_switches():
+    if switch_name not in self.topo_handler.get_switches() and self.is_net_started:
       c0 = self.net.get('c0')
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       self.topo_handler.add_switch(switch_name)
@@ -121,7 +136,7 @@ class Dispatcher(Bottle):
       response.status = 403
 
   def del_switch(self, switch_name):
-    if switch_name in self.topo_handler.get_switches():
+    if switch_name in self.topo_handler.get_switches() and self.is_net_started:
       self.topo_handler.delete_switch(switch_name)
     else:
       response.status = 403
@@ -129,7 +144,8 @@ class Dispatcher(Bottle):
   def del_link(self):
     a = request.json['a']
     b = request.json['b']
-    if (a,b) not in self.topo_handler.get_links() and (b,a) not in self.topo_handler.get_links():
+    has_link = ((a,b) not in self.topo_handler.get_links() and (b,a) not in self.topo_handler.get_links())
+    if has_link or self.is_net_started:
       response.status = 403
     else:
       self.net.configLinkStatus(a, b, 'down')
@@ -143,68 +159,86 @@ class Dispatcher(Bottle):
   def add_link(self):
     a = request.json['a']
     b = request.json['b']
-    if a not in self.topo_handler.get_switches() or b not in self.topo_handler.get_switches():
+    has_switches = a not in self.topo_handler.get_switches() or b not in self.topo_handler.get_switches()
+    if has_switches or self.is_net_started:
       response.status = 403
     else:
       self.topo_handler.add_link((a,b))
 
   def do_cmd(self, node_name):
-    print(request.query['timeout'])
-    timeout = float(request.query['timeout'])
-    args = request.body.read()
-    node = self.net[node_name]
-    rest = args.split(' ')
-    # Substitute IP addresses for node names in command
-    # If updateIP() returns None, then use node name
-    rest = [self.net[arg].defaultIntf().updateIP() or arg if arg in self.net else arg for arg in rest]
-    rest = ' '.join(rest)
-    # Run cmd on node:
-    node.sendCmd(rest)
-    output = ''
-    init_time = time.time()
-    while node.waiting:
-      exec_time = time.time() - init_time
-      #timeout of 5 seconds
-      if exec_time > timeout:
-        break
-      data = node.monitor(timeoutms=1000)
-      output += data
-    # Force process to stop if not stopped in timeout
-    if node.waiting:
-      node.sendInt()
-      time.sleep(0.5)
-      data = node.monitor(timeoutms=1000)
-      output += data
-      node.waiting = False
-    
-    output = output.replace('<', '&lt;')
-    output = output.replace('>', '&gt;')
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      timeout = float(request.query['timeout'])
+      args = request.body.read()
+      node = self.net[node_name]
+      rest = args.split(' ')
+      # Substitute IP addresses for node names in command
+      # If updateIP() returns None, then use node name
+      rest = [self.net[arg].defaultIntf().updateIP() or arg if arg in self.net else arg for arg in rest]
+      rest = ' '.join(rest)
+      # Run cmd on node:
+      node.sendCmd(rest)
+      output = ''
+      init_time = time.time()
+      while node.waiting:
+        exec_time = time.time() - init_time
+        #timeout of 5 seconds
+        if exec_time > timeout:
+          break
+        data = node.monitor(timeoutms=1000)
+        output += data
+      # Force process to stop if not stopped in timeout
+      if node.waiting:
+        node.sendInt()
+        time.sleep(0.5)
+        data = node.monitor(timeoutms=1000)
+        output += data
+        node.waiting = False
+      
+      output = output.replace('<', '&lt;')
+      output = output.replace('>', '&gt;')
 
-    output = output.replace('\n', '<br>')
-    return output
+      output = output.replace('\n', '<br>')
+      return output
 
   def get_events_total(self, dpid):
-    db_query = 'SELECT count(*) as total FROM send_events WHERE dpid = %s'
-    return self.jsonify_query(db_query, dpid)
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      db_query = 'SELECT count(*) as total FROM send_events WHERE dpid = %s'
+      return self.jsonify_query(db_query, dpid)
 
   def get_events_page(self, dpid):
-    perpage = int(request.query['perpage'])
-    startat = int(request.query['page'])*perpage
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      perpage = int(request.query['perpage'])
+      startat = int(request.query['page'])*perpage
 
-    db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
-    return self.jsonify_query(db_query, dpid, perpage, startat)
+      db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
+      return self.jsonify_query(db_query, dpid, perpage, startat)
 
   def get_charge_state(self):
-    return self.jsonify_query('SELECT * FROM charge_state')
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      return self.jsonify_query('SELECT * FROM charge_state')
 
   def get_charge_total(self, dpid):
-    db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'
-    return self.jsonify_query(db_query, dpid)
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'
+      return self.jsonify_query(db_query, dpid)
 
   def get_charge_events(self, dpid):
-    perpage = int(request.query['perpage'])
-    startat = int(request.query['page'])*perpage
-    return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
+    if not self.is_net_started:
+      response.status = 403
+    else:
+      perpage = int(request.query['perpage'])
+      startat = int(request.query['page'])*perpage
+      return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
 
   def paginate(self, query):
     return query + ' ORDER BY id DESC LIMIT %s OFFSET %s;'

@@ -62,6 +62,7 @@ class Dispatcher(Bottle):
     self.route('/events/<dpid>', method='GET', callback=self.get_events_page)
     self.route('/events/<dpid>/total', method='GET', callback=self.get_events_total)
     self.route('/events/charge_state', method='GET', callback=self.get_charge_state)
+    self.route('/count/events', method='GET', callback=self.get_events_count)
     self.route('/events/<dpid>/charge_events', method='GET', callback=self.get_charge_events)
     self.route('/events/<dpid>/charge_events/total', method='GET', callback=self.get_charge_total)
 
@@ -201,6 +202,13 @@ class Dispatcher(Bottle):
 
       output = output.replace('\n', '<br>')
       return output
+
+  def get_events_count(self):
+    start = request.query['start']
+    end = request.query['end']
+
+    db_query = 'select dpid, count(*) as events from charge_events where ts >= %s and ts <= %s group by dpid'
+    return self.jsonify_query(db_query, start, end)
 
   def get_events_total(self, dpid):
     if not self.is_net_started:

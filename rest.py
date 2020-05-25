@@ -125,7 +125,7 @@ class Dispatcher(Bottle):
       node.params.update(request.json['params'])
 
   def add_switch(self, switch_name):
-    if switch_name not in self.topo_handler.get_switches() and self.is_net_started:
+    if switch_name not in self.topo_handler.get_switches() and not self.is_net_started:
       c0 = self.net.get('c0')
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       self.topo_handler.add_switch(switch_name)
@@ -136,7 +136,7 @@ class Dispatcher(Bottle):
       response.status = 403
 
   def del_switch(self, switch_name):
-    if switch_name in self.topo_handler.get_switches() and self.is_net_started:
+    if switch_name in self.topo_handler.get_switches() and not self.is_net_started:
       self.topo_handler.delete_switch(switch_name)
     else:
       response.status = 403

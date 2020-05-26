@@ -139,6 +139,7 @@ class Dispatcher(Bottle):
   def del_switch(self, switch_name):
     if switch_name in self.topo_handler.get_switches() and not self.is_net_started:
       self.topo_handler.delete_switch(switch_name)
+      self.topo_handler.delete_related_links(switch_name)
     else:
       response.status = 403
 

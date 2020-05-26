@@ -19,6 +19,8 @@ class TopoHandler():
     self.my_switches.remove(name)
   def delete_link(self, l):
     self.my_links.remove(l)
+  def delete_related_links(self, name):
+    self.my_links = [i for i in self.my_links if i[1] != name and i[0] != name] 
 
   def get_hosts(self):
     return self.my_hosts

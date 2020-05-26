@@ -15,8 +15,10 @@ class TopoHandler():
 
   def delete_host(self, name):
     self.my_hosts.remove(name)
+    self.delete_related_links(name)
   def delete_switch(self, name):
     self.my_switches.remove(name)
+    self.delete_related_links(name)
   def delete_link(self, l):
     self.my_links.remove(l)
   def delete_related_links(self, name):
@@ -38,7 +40,6 @@ class MyTopo( Topo ):
     super(self.__class__, self).__init__(*args, **kwargs)
 
   def build( self ):
-    print("AAAAA ", self.my_links)
     impl = {};
     for host in self.my_hosts:
       impl[host] = self.addHost(host)

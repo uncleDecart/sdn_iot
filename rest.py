@@ -54,6 +54,8 @@ class Dispatcher(Bottle):
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
     self.route('/switch/<switch_name>', method='DELETE', callback=self.del_switch)
+    self.route('/host/<host_name>', method='POST', callback=self.add_host)
+    self.route('/host/<host_name>', method='DELETE', callback=self.del_host)
     self.route('/link', method='POST', callback=self.add_link)
     self.route('/link', method='DELETE', callback=self.del_link)
     self.route('/test', method='GET', callback=self.test)
@@ -132,15 +134,24 @@ class Dispatcher(Bottle):
       str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       self.topo_handler.add_switch(switch_name)
       self.starting_mac += 1 
-      #s.params.update(request.json['params'])
-      #s.start([c0])
+    else:
+      response.status = 403
+
+  def add_host(self, host_name):
+    if host_name not in self.topo_handler.get_switches() and not self.is_net_started:
+      self.topo_handler.add_host(host_name)
     else:
       response.status = 403
 
   def del_switch(self, switch_name):
     if switch_name in self.topo_handler.get_switches() and not self.is_net_started:
       self.topo_handler.delete_switch(switch_name)
-      self.topo_handler.delete_related_links(switch_name)
+    else:
+      response.status = 403
+
+  def del_host(self, host_name):
+    if host_name in self.topo_handler.get_hosts() and not self.is_net_started:
+      self.topo_handler.delete_host(host_name)
     else:
       response.status = 403
 

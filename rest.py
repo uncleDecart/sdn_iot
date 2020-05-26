@@ -175,7 +175,7 @@ class Dispatcher(Bottle):
   def add_link(self):
     a = request.json['a']
     b = request.json['b']
-    nodes = is_node(a) and is_node(b)
+    nodes = self.is_node(a) and self.is_node(b)
     if not nodes or self.is_net_started:
       response.status = 403
     else:

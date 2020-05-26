@@ -169,11 +169,14 @@ class Dispatcher(Bottle):
         self.topo_handler.delete_link((b,a))
       self.net.start()
 
+  def is_node(self, name):
+    return name in self.topo_handler.get_switches() or name in self.topo_handler.get_hosts() 
+
   def add_link(self):
     a = request.json['a']
     b = request.json['b']
-    has_switches = a not in self.topo_handler.get_switches() or b not in self.topo_handler.get_switches()
-    if has_switches or self.is_net_started:
+    nodes = is_node(a) and is_node(b)
+    if not nodes or self.is_net_started:
       response.status = 403
     else:
       self.topo_handler.add_link((a,b))

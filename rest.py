@@ -92,6 +92,7 @@ class Dispatcher(Bottle):
         self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
                             (el['dpid'], 10000, timestamp))
       self.connection.commit()
+      self.update_mac_to_dpid()
       self.is_net_started = True
  
   def stop_net(self):
@@ -151,11 +152,10 @@ class Dispatcher(Bottle):
       response.status = 403
     else:
       self.net.configLinkStatus(a, b, 'down')
-      self.update_mac_to_dpid()
       if (a,b) in self.topo_handler.get_links():
         self.topo_handler.delete_link((a,b))
       else:
-        self.topo_handler.delete_link((a,b))
+        self.topo_handler.delete_link((b,a))
       self.net.start()
 
   def add_link(self):

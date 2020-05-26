@@ -211,21 +211,15 @@ class Dispatcher(Bottle):
     return self.jsonify_query(db_query, start, end)
 
   def get_events_total(self, dpid):
-    if not self.is_net_started:
-      response.status = 403
-    else:
-      db_query = 'SELECT count(*) as total FROM send_events WHERE dpid = %s'
-      return self.jsonify_query(db_query, dpid)
+    db_query = 'SELECT count(*) as total FROM send_events WHERE dpid = %s'
+    return self.jsonify_query(db_query, dpid)
 
   def get_events_page(self, dpid):
-    if not self.is_net_started:
-      response.status = 403
-    else:
-      perpage = int(request.query['perpage'])
-      startat = int(request.query['page'])*perpage
+    perpage = int(request.query['perpage'])
+    startat = int(request.query['page'])*perpage
 
-      db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
-      return self.jsonify_query(db_query, dpid, perpage, startat)
+    db_query = self.paginate('SELECT from_mac, to_mac, from_port, to_port, ts FROM send_events WHERE dpid = %s')
+    return self.jsonify_query(db_query, dpid, perpage, startat)
 
   def get_charge_state(self):
     if not self.is_net_started:
@@ -234,19 +228,13 @@ class Dispatcher(Bottle):
       return self.jsonify_query('SELECT * FROM charge_state')
 
   def get_charge_total(self, dpid):
-    if not self.is_net_started:
-      response.status = 403
-    else:
-      db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'
-      return self.jsonify_query(db_query, dpid)
+    db_query = 'SELECT count(*) as total FROM charge_events WHERE dpid = %s'
+    return self.jsonify_query(db_query, dpid)
 
   def get_charge_events(self, dpid):
-    if not self.is_net_started:
-      response.status = 403
-    else:
-      perpage = int(request.query['perpage'])
-      startat = int(request.query['page'])*perpage
-      return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
+    perpage = int(request.query['perpage'])
+    startat = int(request.query['page'])*perpage
+    return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
 
   def paginate(self, query):
     return query + ' ORDER BY id DESC LIMIT %s OFFSET %s;'

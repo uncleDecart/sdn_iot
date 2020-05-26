@@ -74,6 +74,7 @@ class Dispatcher(Bottle):
     self.route('/net/start', method='GET', callback=self.start_net)
     self.route('/net/stop', method='GET', callback=self.stop_net)
     self.route('/net/status', method='GET', callback=self.net_status)
+    self.route('/net/topo', method='GET', callback=self.get_topology)
 
   def options_handler(self, path = None):
       return
@@ -181,6 +182,12 @@ class Dispatcher(Bottle):
     else:
       self.topo_handler.add_link((a,b))
 
+  def get_topology(self):
+    return {"hosts" : list(self.topo_handler.get_hosts()),
+            "switches" : list(self.topo_handler.get_switches()),
+            "links" : self.topo_handler.get_links()}
+
+
   def do_cmd(self, node_name):
     if not self.is_net_started:
       response.status = 403
@@ -253,6 +260,7 @@ class Dispatcher(Bottle):
 
   def paginate(self, query):
     return query + ' ORDER BY id DESC LIMIT %s OFFSET %s;'
+
 
   def jsonify_query(self, db_query, *args):
     self.cursor.execute(db_query, args)

@@ -90,7 +90,13 @@ class Dispatcher(Bottle):
       self.net.pingAll()
       ts = time.time()
       timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-      l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+      while True:
+        try:
+          l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+          break
+        except:
+          time.sleep(10)
+
       for el in l:
         self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
                             (el['dpid'], 10000, timestamp))

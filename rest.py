@@ -47,6 +47,7 @@ class Dispatcher(Bottle):
     self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 
     self.is_net_started = False 
+    self.initial_charge_level = 10000
     self.start_net()
 
     self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
@@ -67,6 +68,9 @@ class Dispatcher(Bottle):
     self.route('/count/events', method='GET', callback=self.get_events_count)
     self.route('/events/<dpid>/charge_events', method='GET', callback=self.get_charge_events)
     self.route('/events/<dpid>/charge_events/total', method='GET', callback=self.get_charge_total)
+
+    self.route('/initial_charge', method='GET', callback=self.get_initial_charge_level)
+    self.route('/initial_charge', method='PUT', callback=self.set_initial_charge_level)
 
     self.route('/', method = 'OPTIONS', callback=self.options_handler)
     self.route('/<path:path>', method = 'OPTIONS', callback=self.options_handler)
@@ -99,7 +103,7 @@ class Dispatcher(Bottle):
 
       for el in l:
         self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
-                            (el['dpid'], 10000, timestamp))
+                            (el['dpid'], self.initial_charge_level, timestamp))
       self.connection.commit()
       self.update_mac_to_dpid()
       self.is_net_started = True
@@ -263,6 +267,14 @@ class Dispatcher(Bottle):
     perpage = int(request.query['perpage'])
     startat = int(request.query['page'])*perpage
     return self.jsonify_query(self.paginate('SELECT * FROM charge_events WHERE dpid = %s'), dpid, perpage, startat)
+
+  def get_initial_charge_level(self):
+    return {"charge": self.initial_charge_level}
+
+  def set_initial_charge_level(self):
+    charge = request.json['charge']
+    self.initial_charge_level = charge
+    return {"charge": self.initial_charge_level}
 
   def paginate(self, query):
     return query + ' ORDER BY id DESC LIMIT %s OFFSET %s;'

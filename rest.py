@@ -44,7 +44,7 @@ class Dispatcher(Bottle):
     self.cursor = self.connection.cursor()
 
     self.topo_handler = TopoHandler()
-    self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
+    self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch&" % (CONTROLLER_HOST, CONTROLLER_PORT)
 
     self.is_net_started = False 
     self.start_net()
@@ -83,10 +83,18 @@ class Dispatcher(Bottle):
     if self.is_net_started:
       response.status = 403
     else:
+
+      self.cursor.execute('DELETE FROM topology')
+      for node_a, node_b in self.topo_handler.get_links():
+        self.cursor.execute("REPLACE INTO topology (node_a, node_b) VALUES (%s, %s)",
+                            (node_a, node_b))
+      self.connection.commit()
+
       self.net = Mininet(MyTopo(self.topo_handler), switch=OVSSwitch,
                          controller=RemoteController('c0', ip='127.0.0.1', port=6653))
       self.net.start()
       self.net['c0'].cmd(self.ryu_cmd)
+      self.update_mac_to_dpid()
       self.net.pingAll()
       ts = time.time()
       timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
@@ -101,7 +109,6 @@ class Dispatcher(Bottle):
         self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
                             (el['dpid'], 10000, timestamp))
       self.connection.commit()
-      self.update_mac_to_dpid()
       self.is_net_started = True
  
   def stop_net(self):
@@ -117,12 +124,17 @@ class Dispatcher(Bottle):
 
   def update_mac_to_dpid(self):
     self.cursor.execute("DELETE FROM mac_to_dpid")
-    self.connection.commit()
     l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
     for el in l:
       for mac in el['ports']:
         self.cursor.execute("REPLACE INTO mac_to_dpid (mac_addr, dpid) VALUES (%s, %s)",
                             (mac['hw_addr'], el['dpid']))
+    l = requests.get('http://localhost:5555/v1.0/topology/hosts').json()
+
+    for el in l:
+      self.cursor.execute("REPLACE INTO mac_to_dpid (mac_addr, dpid) VALUES (%s, %s)",
+                          (el['port']['hw_addr'],
+                          'h'+el['ipv4'][0].split('.')[-1]))
     self.connection.commit()
 
   def test(self):

@@ -30,3 +30,9 @@ CREATE TABLE mac_to_dpid (
   dpid VARCHAR(20) NOT NULL,
   PRIMARY KEY(mac_addr)
 );
+
+CREATE TABLE topology (
+  id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  node_a VARCHAR(20) NOT NULL,
+  node_b VARCHAR(20) NOT NULL
+);

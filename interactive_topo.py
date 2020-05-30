@@ -2,9 +2,9 @@ from mininet.topo import Topo
 
 class TopoHandler(): 
   def __init__(self):
-    self.my_hosts = {'h1', 'h2'}
-    self.my_switches = {'s1', 's2', 's3', 's4'}
-    self.my_links = [('h1', 's1'), ('s1', 's2'), ('s2', 's3'), ('s3', 's4'), ('h2', 's4')]
+    self.my_hosts = {'h1', 'h2', 'h3'}
+    self.my_switches = {'s1', 's2', 's3'}
+    self.my_links = [('s1', 'h1'), ('s2', 'h2'), ('s3', 'h3'), ('s1', 's2'), ('s2', 's3'), ('s3', 's1')]
 
   def add_host(self, name):
     self.my_hosts.add(name) 

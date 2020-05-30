@@ -44,13 +44,11 @@ class Dispatcher(Bottle):
     self.cursor = self.connection.cursor()
 
     self.topo_handler = TopoHandler()
-    self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch&" % (CONTROLLER_HOST, CONTROLLER_PORT)
+    self.ryu_cmd = "ryu-manager --observe-links --wsapi-host %s --wsapi-port %s ryu.app.iot_switch &" % (CONTROLLER_HOST, CONTROLLER_PORT)
 
     self.is_net_started = False 
     self.initial_charge_level = 10000
     self.start_net()
-
-    self.starting_mac = 0x1E0BFA737000 # 1E:0B:FA:73:70:00
 
     self.route('/nodes/<node_name>', method='POST', callback=self.post_node)
     self.route('/switch/<switch_name>', method='POST', callback=self.add_switch)
@@ -83,6 +81,16 @@ class Dispatcher(Bottle):
   def options_handler(self, path = None):
       return
 
+  def get_req(self, req):
+    while True:
+      try:
+        print "trying to get ", req
+        l = requests.get(req).json()
+        break
+      except:
+        time.sleep(5)
+    return l
+
   def start_net(self):
     if self.is_net_started:
       response.status = 403
@@ -102,18 +110,15 @@ class Dispatcher(Bottle):
       self.net.pingAll()
       ts = time.time()
       timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-      while True:
-        try:
-          l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
-          break
-        except:
-          time.sleep(10)
+
+      l = self.get_req('http://localhost:5555/v1.0/topology/switches')
 
       for el in l:
         self.cursor.execute("REPLACE INTO charge_state (dpid, charge, ts) VALUES (%s, %s, %s)",
                             (el['dpid'], self.initial_charge_level, timestamp))
       self.connection.commit()
       self.is_net_started = True
+      print "*** Network has started ***"
  
   def stop_net(self):
     if not self.is_net_started:
@@ -128,17 +133,15 @@ class Dispatcher(Bottle):
 
   def update_mac_to_dpid(self):
     self.cursor.execute("DELETE FROM mac_to_dpid")
-    l = requests.get('http://localhost:5555/v1.0/topology/switches').json()
+    l = self.get_req('http://localhost:5555/v1.0/topology/switches')
     for el in l:
       for mac in el['ports']:
         self.cursor.execute("REPLACE INTO mac_to_dpid (mac_addr, dpid) VALUES (%s, %s)",
                             (mac['hw_addr'], el['dpid']))
-    l = requests.get('http://localhost:5555/v1.0/topology/hosts').json()
-
-    for el in l:
+    
+    for el in self.topo_handler.get_hosts():
       self.cursor.execute("REPLACE INTO mac_to_dpid (mac_addr, dpid) VALUES (%s, %s)",
-                          (el['port']['hw_addr'],
-                          'h'+el['ipv4'][0].split('.')[-1]))
+                          (self.topo_handler.get_host_mac(el), el))
     self.connection.commit()
 
   def test(self):
@@ -154,9 +157,7 @@ class Dispatcher(Bottle):
   def add_switch(self, switch_name):
     if switch_name not in self.topo_handler.get_switches() and not self.is_net_started:
       c0 = self.net.get('c0')
-      str_mac = ':'.join(hex(self.starting_mac)[i:i+2] for i in range(0,12,2))
       self.topo_handler.add_switch(switch_name)
-      self.starting_mac += 1 
     else:
       response.status = 403
 
